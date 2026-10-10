@@ -470,10 +470,9 @@ a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important
           </div>
         </div>
         <div class="fld">
-          <label for="memo">상세 설명 <em id="memoOpt">사진이 있으면 생략 가능</em></label>
-          <textarea id="memo" name="memo" rows="4" maxlength="500" placeholder="예) 운전석 뒷문 문콕 1곳, 뒷범퍼 오른쪽 긁힘 약 20cm" aria-describedby="memoErr"></textarea>
+          <label for="memo">상세 설명 <em id="memoOpt">(선택)</em></label>
+          <textarea id="memo" name="memo" rows="4" maxlength="500" placeholder="자유롭게 적어 주세요.&#10;예) 운전석 뒷문 문콕 1곳, 뒷범퍼 오른쪽 긁힘 약 20cm"></textarea>
           <span class="cnt"><span id="memoCount">0</span>/500</span>
-          <span class="err" id="memoErr" role="alert"></span>
         </div>
       </fieldset>
 
@@ -713,7 +712,7 @@ function photoMode(){return $('#pmNone').checked?'none':'photo';}
 function syncMode(){
   var none=photoMode()==='none';
   photoPane.hidden=none; noPhotoNote.hidden=!none;
-  memoOpt.textContent=none?'필수 · 손상 위치와 크기를 적어 주세요':'사진이 있으면 생략 가능';
+  memoOpt.textContent=none?'(선택) 적어 주시면 견적이 더 정확해요':'(선택)';
   setErr('photo','');
 }
 $all('input[name=photoMode]').forEach(function(r){r.addEventListener('change',syncMode);});
@@ -752,8 +751,9 @@ fileInput.addEventListener('change',function(){addFiles(fileInput.files);fileInp
 ['dragleave','drop'].forEach(function(t){drop.addEventListener(t,function(e){e.preventDefault();drop.classList.remove('over');});});
 drop.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.files){addFiles(e.dataTransfer.files);}});
 
-/* ----- 설명 입력 도우미 ----- */
+/* ----- 상세 설명: 자유 양식, 필수 아님 ----- */
 function syncCount(){memoCount.textContent=String(memo.value.length);}
+function memoText(d){return d.memo||(d.photoMode==='photo'?'(사진 참고)':'(적지 않음)');}
 memo.addEventListener('input',syncCount);
 
 /* ----- 휴대폰 번호 ----- */
@@ -768,8 +768,8 @@ function validPhone(v){return /^01[016789]-\d{3,4}-\d{4}$/.test(v);}
 phone.addEventListener('input',function(){phone.value=fmtPhone(phone.value);});
 
 /* ----- 검증 ----- */
-var ERR={photo:'#photoErr',carModel:'#carModelErr',carYear:'#carYearErr',memo:'#memoErr',phone:'#phoneErr',agree:'#agreeErr'};
-var FIELD={photo:'#photos',carModel:'#carModel',carYear:'#carYear',memo:'#memo',phone:'#phone',agree:'#agree'};
+var ERR={photo:'#photoErr',carModel:'#carModelErr',carYear:'#carYearErr',phone:'#phoneErr',agree:'#agreeErr'};
+var FIELD={photo:'#photos',carModel:'#carModel',carYear:'#carYear',phone:'#phone',agree:'#agree'};
 function setErr(key,msg){
   $(ERR[key]).textContent=msg||'';
   var el=$(FIELD[key]); if(el){if(msg){el.setAttribute('aria-invalid','true');}else{el.removeAttribute('aria-invalid');}}
@@ -782,12 +782,11 @@ function validate(d){
   if(d.photoMode==='photo'&&!files.length){e.photo="사진을 1장 이상 올려 주세요. 사진이 없으면 '사진 없이 설명으로 할래요'를 선택하면 됩니다.";}
   if(!d.carModel){e.carModel='차종을 입력해 주세요. 예) 아반떼 CN7';}
   if(!d.carYear){e.carYear="연식을 선택해 주세요. 모르면 '잘 모르겠어요'를 고르면 됩니다.";}
-  if(d.photoMode==='none'&&d.memo.length<5){e.memo='사진이 없으면 손상 위치와 크기를 글로 적어 주세요.';}
   if(!validPhone(d.phone)){e.phone='휴대폰 번호를 다시 확인해 주세요. 예) 010-1234-5678';}
   if(!d.agree){e.agree='개인정보 수집·이용에 동의해야 견적을 요청할 수 있습니다.';}
   return e;
 }
-['carModel','carYear','memo','phone','agree'].forEach(function(key){
+['carModel','carYear','phone','agree'].forEach(function(key){
   var el=$(FIELD[key]); el.addEventListener(el.type==='checkbox'||el.tagName==='SELECT'?'change':'input',function(){if($(ERR[key]).textContent){setErr(key,'');}});
 });
 
@@ -838,14 +837,14 @@ form.addEventListener('submit',function(ev){
     files.forEach(function(x,i){var im=document.createElement('img');im.src=x.url;im.alt='사진 '+(i+1);im.onerror=function(){im.remove();};mini.appendChild(im);});
     row(dl,'사진',files.length+'장',mini);
   }else{row(dl,'사진','없음 (설명으로 요청)');}
-  row(dl,'차종',d.carModel); row(dl,'연식',d.carYear); row(dl,'상세 설명',d.memo||'(사진 참고)'); row(dl,'회신 번호',d.phone);
+  row(dl,'차종',d.carModel); row(dl,'연식',d.carYear); row(dl,'상세 설명',memoText(d)); row(dl,'회신 번호',d.phone);
   $('#sendError').hidden=true; $('#smsFallback').hidden=true;
   var cs=$('#confirmSend'); cs.disabled=false; cs.textContent='확인 · 발송';
   openModal($('#confirmModal'),cs);
 });
 
 function messageText(d){
-  return ['[차기스 PRO 견적 요청]','· 차종: '+d.carModel,'· 연식: '+d.carYear,'· 손상 내용: '+(d.memo||'(사진 참고)'),
+  return ['[차기스 PRO 견적 요청]','· 차종: '+d.carModel,'· 연식: '+d.carYear,'· 손상 내용: '+memoText(d),
     '· 사진: '+(d.photoMode==='photo'?files.length+'장 (이 문자에 첨부)':'없음 (설명으로 요청)'),'· 회신 번호: '+d.phone].join('\n');
 }
 function showDone(kind,d){
